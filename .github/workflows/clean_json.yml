@@ -1,0 +1,58 @@
+name: Clean JSON Content
+
+on:
+  schedule:
+    # Runs every day at 3:00 AM IST (21:30 UTC)
+    - cron: '30 21 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.PAT_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Run cleanup script
+      run: python cleanup_json.py
+    
+    - name: Configure git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Check for changes
+      id: verify-diff
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "changes=true" >> $GITHUB_OUTPUT
+        else
+          echo "changes=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Commit and push changes
+      if: steps.verify-diff.outputs.changes == 'true'
+      run: |
+        git add content.json
+        git commit -m "Auto-cleanup: Update content.json [$(date '+%Y-%m-%d %H:%M:%S')]"
+        git pull --rebase origin main
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+    
+    - name: No changes to commit
+      if: steps.verify-diff.outputs.changes == 'false'
+      run: echo "No changes detected in content.json"
