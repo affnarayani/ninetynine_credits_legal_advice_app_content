@@ -189,8 +189,8 @@ def remove_unused_images(content, images_folder):
 
 def main():
     # Configuration
-    content_file = 'd:/Coding/ninetynine_credits_legal_advice_app_content/content.json'
-    images_folder = 'd:/Coding/ninetynine_credits_legal_advice_app_content/images'
+    content_file = 'content.json'
+    images_folder = 'images'
     
     print("=== JSON Cleanup Script ===")
     print(f"Step 1: Remove entries with missing images")
