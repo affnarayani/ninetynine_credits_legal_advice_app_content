@@ -2,6 +2,7 @@
 """
 JSON Cleanup Script
 Removes JSON entries from content.json where the corresponding image files are missing.
+Also removes unused images from the images folder.
 """
 
 import json
@@ -131,14 +132,70 @@ def filter_content_by_existing_images(content, images_folder):
     
     return filtered_content, removed_entries
 
+def get_images_used_in_content(content):
+    """Get a set of image filenames used in the content."""
+    if not content:
+        return set()
+    
+    used_images = set()
+    for item in content:
+        if 'image' in item:
+            image_url = item['image']
+            # Extract filename from URL
+            parsed_url = urlparse(image_url)
+            filename = os.path.basename(parsed_url.path)
+            if filename:
+                used_images.add(filename.lower())
+    
+    return used_images
+
+def remove_unused_images(content, images_folder):
+    """Remove images that are not used in the content (except fallbackImage.png)."""
+    if not content:
+        return []
+    
+    if not os.path.exists(images_folder):
+        print(f"Error: Images folder '{images_folder}' does not exist")
+        return []
+    
+    removed_images = []
+    
+    try:
+        # Get all images currently in the folder
+        folder_files = os.listdir(images_folder)
+        
+        # Get images used in the content
+        used_images = get_images_used_in_content(content)
+        
+        # Always keep fallbackImage.png
+        used_images.add('fallbackimage.png')
+        
+        for filename in folder_files:
+            # Check if the file is an image (basic check)
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')):
+                if filename.lower() not in used_images:
+                    image_path = os.path.join(images_folder, filename)
+                    try:
+                        os.remove(image_path)
+                        removed_images.append(filename)
+                        print(f"Removed unused image: {filename}")
+                    except OSError as e:
+                        print(f"Error removing image {filename}: {e}")
+                        
+    except OSError as e:
+        print(f"Error accessing images folder: {e}")
+    
+    return removed_images
+
 def main():
     # Configuration
-    content_file = 'content.json'
-    images_folder = 'images'
+    content_file = 'd:/Coding/ninetynine_credits_legal_advice_app_content/content.json'
+    images_folder = 'd:/Coding/ninetynine_credits_legal_advice_app_content/images'
     
     print("=== JSON Cleanup Script ===")
     print(f"Step 1: Remove entries with missing images")
     print(f"Step 2: Keep only top 30 elements from remaining")
+    print(f"Step 3: Remove unused images from images folder")
     print("-" * 50)
     
     # Load content.json
@@ -179,8 +236,20 @@ def main():
     
     # Check if any changes were made
     if not removed_entries and not trimmed_entries:
-        print(f"\n✅ No cleanup needed!")
+        print(f"\n✅ No JSON cleanup needed!")
         print(f"All {original_count} entries have existing images and count is within limit of 30")
+        
+        # Still check for unused images even if no JSON cleanup is needed
+        print(f"\n=== STEP 3: Checking for unused images ===")
+        removed_images = remove_unused_images(final_content, images_folder)
+        
+        if removed_images:
+            print(f"Removed {len(removed_images)} unused images from images folder")
+            for i, image in enumerate(removed_images, 1):
+                print(f"{i:2d}. {image}")
+        else:
+            print("✅ No unused images found in images folder")
+        
         return 0
     
     # Save the final content
@@ -191,6 +260,18 @@ def main():
         print(f"After image filtering: {len(filtered_content)}")
         print(f"Final entries: {new_count}")
         print(f"Total removed: {original_count - new_count}")
+        
+        # STEP 3: Remove unused images from images folder
+        print(f"\n=== STEP 3: Removing unused images ===")
+        removed_images = remove_unused_images(final_content, images_folder)
+        
+        if removed_images:
+            print(f"Removed {len(removed_images)} unused images from images folder")
+            for i, image in enumerate(removed_images, 1):
+                print(f"{i:2d}. {image}")
+        else:
+            print("✅ No unused images found in images folder")
+        
         return 0
     else:
         print(f"\n❌ Failed to save {content_file}")

@@ -48,8 +48,8 @@ jobs:
     - name: Commit and push changes
       if: steps.verify-diff.outputs.changes == 'true'
       run: |
-        git add content.json
-        git commit -m "Auto-cleanup: Update content.json [$(date '+%Y-%m-%d %H:%M:%S')]"
+        git add content.json images/
+        git commit -m "Auto-cleanup: Update content.json and remove unused images [$(date '+%Y-%m-%d %H:%M:%S')]"
         git pull --rebase origin main
         git push
       env:
@@ -57,4 +57,4 @@ jobs:
     
     - name: No changes to commit
       if: steps.verify-diff.outputs.changes == 'false'
-      run: echo "No changes detected in content.json"
+      run: echo "No changes detected in content.json or images folder"
