@@ -58,3 +58,48 @@ jobs:
     - name: No changes to commit
       if: steps.verify-diff.outputs.changes == 'false'
       run: echo "No changes detected in content.json or images folder"
+    
+    # Update target repository if changes were made
+    - name: Checkout target repository
+      if: steps.verify-diff.outputs.changes == 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: affnarayani/ninetynine_credits_legal_advice_app_content_generator
+        token: ${{ secrets.PAT_TOKEN }}
+        path: target-repo
+    
+    - name: Update content.json in target repository
+      if: steps.verify-diff.outputs.changes == 'true'
+      run: |
+        # Copy content.json from source to target repo
+        cp content.json target-repo/content.json
+        
+        # Configure git for target repo
+        cd target-repo
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are changes in target repo
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "Changes detected in target repository"
+          echo "target-changes=true" >> $GITHUB_OUTPUT
+        else
+          echo "No changes in target repository"
+          echo "target-changes=false" >> $GITHUB_OUTPUT
+        fi
+      id: target-verify-diff
+    
+    - name: Commit and push to target repository
+      if: steps.verify-diff.outputs.changes == 'true' && steps.target-verify-diff.outputs.target-changes == 'true'
+      run: |
+        cd target-repo
+        git add content.json
+        git commit -m "Auto-sync: Update content.json from source repository [$(date '+%Y-%m-%d %H:%M:%S')]"
+        git pull --rebase origin main
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+    
+    - name: No changes to sync
+      if: steps.verify-diff.outputs.changes == 'true' && steps.target-verify-diff.outputs.target-changes == 'false'
+      run: echo "No changes to sync to target repository"
