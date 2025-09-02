@@ -187,16 +187,47 @@ def remove_unused_images(content, images_folder):
     
     return removed_images
 
+# New pre-load cleanup: remove images with % in name
+
+def remove_percent_images(images_folder):
+    """Delete images with '%' in filename from images folder."""
+    if not os.path.exists(images_folder):
+        print(f"Error: Images folder '{images_folder}' does not exist")
+        return []
+    removed = []
+    try:
+        for filename in os.listdir(images_folder):
+            if '%' in filename:
+                image_path = os.path.join(images_folder, filename)
+                try:
+                    os.remove(image_path)
+                    removed.append(filename)
+                    print(f"Removed image with % in name: {filename}")
+                except OSError as e:
+                    print(f"Error removing image {filename}: {e}")
+    except OSError as e:
+        print(f"Error accessing images folder: {e}")
+    return removed
+
+
 def main():
     # Configuration
     content_file = 'content.json'
     images_folder = 'images'
     
     print("=== JSON Cleanup Script ===")
+    print(f"Pre-step: Remove images with % in filename")
     print(f"Step 1: Remove entries with missing images")
     print(f"Step 2: Keep only top 30 elements from remaining")
     print(f"Step 3: Remove unused images from images folder")
     print("-" * 50)
+
+    # Pre-step: remove images with % in filename before loading JSON
+    removed_percent = remove_percent_images(images_folder)
+    if removed_percent:
+        print(f"Removed {len(removed_percent)} images containing % in name before processing JSON")
+    else:
+        print("No images with % in filename found")
     
     # Load content.json
     content = load_json_content(content_file)
