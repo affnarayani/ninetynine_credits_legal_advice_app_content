@@ -210,6 +210,21 @@ def remove_percent_images(images_folder):
     return removed
 
 
+def sanitize_asterisks(content):
+    """Remove '*' characters from 'title' and 'description' fields."""
+    if not content:
+        return content, 0
+    changes = 0
+    for item in content:
+        for key in ('title', 'description'):
+            if key in item and isinstance(item[key], str):
+                new_val = item[key].replace('*', '')
+                if new_val != item[key]:
+                    item[key] = new_val
+                    changes += 1
+    return content, changes
+
+
 def main():
     # Configuration
     content_file = 'content.json'
@@ -219,7 +234,8 @@ def main():
     print(f"Pre-step: Remove images with % in filename")
     print(f"Step 1: Remove entries with missing images")
     print(f"Step 2: Keep only top 30 elements from remaining")
-    print(f"Step 3: Remove unused images from images folder")
+    print(f"Step 3: Remove '*' from title/description")
+    print(f"Step 4: Remove unused images from images folder")
     print("-" * 50)
 
     # Pre-step: remove images with % in filename before loading JSON
@@ -265,48 +281,44 @@ def main():
             print(f"{i:2d}. {entry['title']}")
             print(f"    Position: {entry['position']}")
     
-    # Check if any changes were made
-    if not removed_entries and not trimmed_entries:
-        print(f"\n✅ No JSON cleanup needed!")
-        print(f"All {original_count} entries have existing images and count is within limit of 30")
-        
-        # Still check for unused images even if no JSON cleanup is needed
-        print(f"\n=== STEP 3: Checking for unused images ===")
-        removed_images = remove_unused_images(final_content, images_folder)
-        
-        if removed_images:
-            print(f"Removed {len(removed_images)} unused images from images folder")
-            for i, image in enumerate(removed_images, 1):
-                print(f"{i:2d}. {image}")
-        else:
-            print("✅ No unused images found in images folder")
-        
-        return 0
-    
-    # Save the final content
-    if save_json_content(content_file, final_content):
-        new_count = len(final_content)
-        print(f"\n✅ Successfully updated {content_file}")
-        print(f"Original entries: {original_count}")
-        print(f"After image filtering: {len(filtered_content)}")
-        print(f"Final entries: {new_count}")
-        print(f"Total removed: {original_count - new_count}")
-        
-        # STEP 3: Remove unused images from images folder
-        print(f"\n=== STEP 3: Removing unused images ===")
-        removed_images = remove_unused_images(final_content, images_folder)
-        
-        if removed_images:
-            print(f"Removed {len(removed_images)} unused images from images folder")
-            for i, image in enumerate(removed_images, 1):
-                print(f"{i:2d}. {image}")
-        else:
-            print("✅ No unused images found in images folder")
-        
-        return 0
+    # STEP 3: Sanitize asterisks from title/description
+    print(f"\n=== STEP 3: Removing '*' from title/description ===")
+    final_content, sanitize_changes = sanitize_asterisks(final_content)
+    if sanitize_changes:
+        print(f"Sanitized {sanitize_changes} fields by removing '*'")
     else:
-        print(f"\n❌ Failed to save {content_file}")
-        return 1
+        print("No '*' found in title/description fields")
+    
+    need_save = bool(removed_entries or trimmed_entries or sanitize_changes)
+    
+    # Save the final content if any changes occurred
+    if need_save:
+        if save_json_content(content_file, final_content):
+            new_count = len(final_content)
+            print(f"\n✅ Successfully updated {content_file}")
+            print(f"Original entries: {original_count}")
+            print(f"After image filtering: {len(filtered_content)}")
+            print(f"Final entries: {new_count}")
+            print(f"Total removed: {original_count - new_count}")
+        else:
+            print(f"\n❌ Failed to save {content_file}")
+            return 1
+    else:
+        print(f"\n✅ No JSON structural changes needed and no '*' to sanitize")
+        print(f"All {original_count} entries have existing images and count is within limit of 30")
+    
+    # STEP 4: Remove unused images from images folder
+    print(f"\n=== STEP 4: Removing unused images ===")
+    removed_images = remove_unused_images(final_content, images_folder)
+    
+    if removed_images:
+        print(f"Removed {len(removed_images)} unused images from images folder")
+        for i, image in enumerate(removed_images, 1):
+            print(f"{i:2d}. {image}")
+    else:
+        print("✅ No unused images found in images folder")
+    
+    return 0
 
 if __name__ == "__main__":
     exit(main())
