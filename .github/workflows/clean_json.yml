@@ -3,7 +3,7 @@ name: Clean JSON Content
 on:
   schedule:
     # Runs every day at 3:00 AM IST (21:30 UTC)
-    - cron: '30 21 * * *'
+    - cron: '0 */3 * * *'
   workflow_dispatch: # Allows manual trigger
 
 jobs:
